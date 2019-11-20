@@ -172,6 +172,7 @@ counts
 # message('WHY ARE THERE TWO OBSERVATIONS EACH FOR STUDY YEAR 5 - CASES, AND FOR STUDY YEAR 5 - CONTROLS???')
 # message('For now, arbitrarily removing (but Augusto should fix this)')
 # # Removing...
+pd <- assemblage_evolution
 # pd <- assemblage_evolution %>%
 #   group_by(study_year, case, study) %>%
 #   mutate(n = n()) %>%
@@ -213,7 +214,7 @@ for(a in 1:length(study_years)){
 study_years <- sort(unique(pd$study_year))
 studies <- sort(unique(pd$study))
 
-p <- assemblageb
+p <- assemblageb %>% ungroup
 p$chi <- NA
 for(a in 1:length(study_years)){
   for(b in 1:length(studies)){
@@ -277,7 +278,7 @@ ggplot(data = pd,
             alpha = 0.6,
             position = position_dodge(width = 0.8)) +
   # Add p-values
-  geom_text(data = pd %>% dplyr::distinct(study_year, study, .keep_all = TRUE),
+  geom_text(data = p %>% dplyr::distinct(study_year, study, .keep_all = TRUE),
             aes(x = study_year,
                 y = 5,
                 label = paste0('(p=', round(chi, digits = 2), ')',
