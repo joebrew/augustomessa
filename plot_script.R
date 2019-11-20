@@ -169,14 +169,14 @@ assemblage_evolution <- assemblageb[assemblageb$giardia_assemblage=="Assemblage 
 counts <- assemblage_evolution %>%
   group_by(study_year, case, study) %>% tally %>% arrange(desc(n))
 counts
-message('WHY ARE THERE TWO OBSERVATIONS EACH FOR STUDY YEAR 5 - CASES, AND FOR STUDY YEAR 5 - CONTROLS???')
-message('For now, arbitrarily removing (but Augusto should fix this)')
-# Removing...
-pd <- assemblage_evolution %>%
-  group_by(study_year, case, study) %>%
-  mutate(n = n()) %>%
-  ungroup %>%
-  filter(n == 1)
+# message('WHY ARE THERE TWO OBSERVATIONS EACH FOR STUDY YEAR 5 - CASES, AND FOR STUDY YEAR 5 - CONTROLS???')
+# message('For now, arbitrarily removing (but Augusto should fix this)')
+# # Removing...
+# pd <- assemblage_evolution %>%
+#   group_by(study_year, case, study) %>%
+#   mutate(n = n()) %>%
+#   ungroup %>%
+#   filter(n == 1)
 
 # # Calculat p values
 study_years <- sort(unique(pd$study_year))
@@ -190,13 +190,57 @@ for(a in 1:length(study_years)){
     these_data <- pd %>% filter(study_year == this_study_year,
                                 study == this_study)
     if(nrow(these_data) == 2){
-      chi <- chisq.test(as.matrix(these_data[,c('subjects', 'subjects_by_year')]))
+      chi <- chisq.test(t(as.matrix(these_data[,c('subjects', 'subjects_by_year')])))
       chi <- chi$p.value
       # Plug in
       pd$chi[pd$study == this_study & pd$study_year == this_study_year] <- chi
     }
   }
 }
+
+# # Put into format of augusto's table
+# library(tidyr)
+# augusto <- pd %>% dplyr::select(-giardia_assemblage) %>%
+#   mutate(year_study = paste0('Year ', study_year, ' - ', study)) %>%
+#   ungroup %>%
+#   dplyr::select(-study_year, -study) %>%
+#   mutate(val = paste0(subjects, ' / ',  subjects_by_year, ' (', freq, ')', ' p: ', round(chi, digits = 3))) %>%
+#   dplyr::select(-subjects, -subjects_by_year, -freq, -chi) %>%
+#   spread(key = case, value = val)
+
+# Get p values from assemblageb
+# # Calculat p values
+study_years <- sort(unique(pd$study_year))
+studies <- sort(unique(pd$study))
+
+p <- assemblageb
+p$chi <- NA
+for(a in 1:length(study_years)){
+  for(b in 1:length(studies)){
+    this_study_year <- study_years[a]
+    this_study <- studies[b]
+    these_data <- pd %>% filter(study_year == this_study_year,
+                                study == this_study)
+    if(nrow(these_data) == 2){
+      chi <- chisq.test((as.matrix(these_data[,c('subjects', 'subjects_by_year')])))
+      chi <- chi$p.value
+      # Plug in
+      p$chi[p$study == this_study & p$study_year == this_study_year] <- chi
+    }
+  }
+}
+library(tidyr)
+augusto <- p %>% ungroup %>% 
+  mutate(year_study = paste0('Year ', study_year, ' - ', study)) %>%
+  ungroup %>%
+  dplyr::select(-study_year, -study) %>%
+  mutate(val = paste0(subjects, ' / ',  subjects_by_year, ' (', freq, ')', ' p: ', round(chi, digits = 3))) %>%
+  # mutate(case = ifelse(giardia_assemblage == 'Assemblage B', 'Positive', 'Negative')) %>%
+  filter(giardia_assemblage != 'Negative') %>%
+  dplyr::select(-giardia_assemblage) %>%
+  dplyr::select(-subjects, -subjects_by_year, -freq, -chi) %>%
+  spread(key = case, value = val) %>%
+  mutate(Cases = unlist(lapply(strsplit(Cases, ' p:', fixed = TRUE), function(x){x[1]})))
 
 
 library(cowplot)
